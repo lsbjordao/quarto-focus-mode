@@ -1,0 +1,144 @@
+<!-- Quarto Book Focus Mode -->
+<style>
+#book-focus-toggle {
+  position: fixed;
+  left: 1rem;
+  bottom: 1rem;
+  z-index: 9999;
+
+  height: 44px;
+  min-width: 44px;
+  width: 44px;
+
+  border-radius: 999px;
+  border: 1px solid var(--bs-border-color);
+  background: var(--bs-body-bg);
+  color: var(--bs-body-color);
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+
+  overflow: hidden;
+  white-space: nowrap;
+  cursor: pointer;
+
+  font-size: 0.95rem;
+  box-shadow: 0 2px 12px rgba(0,0,0,.18);
+
+  padding: 0;
+
+  transition:
+    padding .22s ease,
+    transform .15s ease,
+    box-shadow .2s ease;
+}
+
+#book-focus-toggle:hover {
+  width: auto;
+  padding-right: .9rem;
+  box-shadow: 0 3px 14px rgba(0,0,0,.25);
+  transform: scale(1.03);
+}
+
+#book-focus-icon {
+  width: 44px;
+  height: 44px;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  font-size: 1.25rem;
+  flex-shrink: 0;
+}
+
+#book-focus-label {
+  opacity: 0;
+  margin-left: .15rem;
+  transition: opacity .18s ease;
+}
+
+#book-focus-toggle:hover #book-focus-label {
+  opacity: 1;
+}
+
+/* Focus mode: hide Quarto book navigation and margin TOC */
+body.book-focus-mode #quarto-sidebar,
+body.book-focus-mode #quarto-margin-sidebar,
+body.book-focus-mode nav#TOC {
+  display: none !important;
+}
+
+/* Recenter the main content */
+body.book-focus-mode #quarto-content {
+  display: block !important;
+}
+
+body.book-focus-mode main.content {
+  max-width: var(--book-focus-content-width, 920px);
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+
+/* Reading comfort */
+#quarto-document-content {
+  line-height: 1.65;
+  font-size: 1.03rem;
+}
+</style>
+
+<button id="book-focus-toggle" aria-label="Modo foco" type="button">
+  <span id="book-focus-icon" aria-hidden="true">⛶</span>
+  <span id="book-focus-label">Modo foco</span>
+</button>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  const button = document.getElementById("book-focus-toggle");
+  const icon = document.getElementById("book-focus-icon");
+  const label = document.getElementById("book-focus-label");
+
+  // Only show on pages with Quarto book/sidebar structure
+  const hasBookSidebar = document.querySelector("#quarto-sidebar") !== null;
+  if (!hasBookSidebar && button) {
+    button.style.display = "none";
+    return;
+  }
+
+  const storageKey = "quarto-book-focus-mode";
+
+  function setFocusMode(enabled) {
+    document.body.classList.toggle("book-focus-mode", enabled);
+
+    if (enabled) {
+      icon.textContent = "☰";
+      label.textContent = "TOC";
+      button.setAttribute("aria-label", "Mostrar sumário");
+    } else {
+      icon.textContent = "⛶";
+      label.textContent = "Modo foco";
+      button.setAttribute("aria-label", "Modo foco");
+    }
+
+    try {
+      window.localStorage.setItem(storageKey, enabled ? "1" : "0");
+    } catch (e) {
+      // Ignore storage errors
+    }
+  }
+
+  let saved = "0";
+  try {
+    saved = window.localStorage.getItem(storageKey) || "0";
+  } catch (e) {
+    saved = "0";
+  }
+
+  setFocusMode(saved === "1");
+
+  button.addEventListener("click", function () {
+    setFocusMode(!document.body.classList.contains("book-focus-mode"));
+  });
+});
+</script>
