@@ -22,7 +22,7 @@ Enable the extension by adding the filter to your `_quarto.yml`:
 format:
   html:
     filters:
-      - book-focus-mode
+      - _extensions/lsbjordao/quarto-book-focus-mode/book-focus-mode.lua
 ```
 
 Then render your project:
