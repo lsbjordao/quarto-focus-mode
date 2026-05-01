@@ -277,8 +277,11 @@ document.addEventListener("DOMContentLoaded", function () {
 
   function updateProgress(position) {
     if (!progressBar || total === 0) return;
-    // Each chapter occupies an equal slice; fill that slice proportionally
-    var globalPct = (chapterIdx / totalChapters) + (position / total / totalChapters);
+    // Index (chapter 0) always shows 0%; remaining chapters fill 0–100%
+    if (chapterIdx === 0) { progressBar.style.width = "0%"; return; }
+    var effectiveIdx   = chapterIdx - 1;
+    var effectiveTotal = Math.max(1, totalChapters - 1);
+    var globalPct = (effectiveIdx / effectiveTotal) + (position / total / effectiveTotal);
     progressBar.style.width = (globalPct * 100) + "%";
   }
 
