@@ -81,15 +81,33 @@ body.book-focus-mode main.content {
   font-size: 1.03rem;
 }
 
-/* ── Presentation mode: hide all content except the overlay ── */
-body.book-presentation-mode #quarto-document-content > *:not(#pres-slide-overlay) {
+/* ── Presentation mode ── */
+
+/* Hide everything in the content root that is not on the current path */
+body.book-presentation-mode #quarto-document-content > *:not(.pres-current):not(.pres-ancestor) {
   display: none !important;
 }
 
-/* Ensure the cloned section inside the overlay is always visible,
-   overriding any inline style or Quarto rule that might hide it */
-#pres-slide-overlay > section {
+/* Show current section and ancestor sections */
+body.book-presentation-mode .pres-current,
+body.book-presentation-mode .pres-ancestor {
   display: block !important;
+}
+
+/* Inside ancestor sections: hide non-section children (headings, paragraphs, etc.)
+   so only the path to the current section is visible */
+body.book-presentation-mode .pres-ancestor > :not(section) {
+  display: none !important;
+}
+
+/* Inside ancestor sections: hide sibling sections that are not on the path */
+body.book-presentation-mode .pres-ancestor > section[class*="level"]:not(.pres-current):not(.pres-ancestor) {
+  display: none !important;
+}
+
+/* For level2+ current sections: hide their nested subsections */
+body.book-presentation-mode .pres-current:not(.level1) > section[class*="level"] {
+  display: none !important;
 }
 
 /* ── Presentation indicator (bottom-right, visible only when active) ── */
@@ -135,6 +153,7 @@ body.book-presentation-mode #book-pres-indicator {
 </button>
 
 <div id="book-pres-indicator" aria-live="polite">
+  <span id="book-pres-icon">▶</span>
   <span id="book-pres-counter"></span>
 </div>
 
@@ -195,32 +214,28 @@ document.addEventListener("DOMContentLoaded", function () {
 
   var currentIdx = 0;
   var presActive  = false;
-  var overlay     = null;
 
-  function getOverlay() {
-    if (!overlay) {
-      overlay = document.createElement("div");
-      overlay.id = "pres-slide-overlay";
-      contentRoot.appendChild(overlay);
+  function clearPresClasses() {
+    for (var i = 0; i < slides.length; i++) {
+      slides[i].classList.remove('pres-current', 'pres-ancestor');
     }
-    return overlay;
   }
 
   function showSlide(idx) {
-    var ov      = getOverlay();
+    clearPresClasses();
+
+    currentIdx = idx;
     var section = slides[idx];
+    section.classList.add('pres-current');
 
-    // Clone section; for level1, keep subsections — for deeper levels, strip them
-    var clone = section.cloneNode(true);
-    // Clear any inline display style Quarto may have set on the original section
-    clone.style.removeProperty('display');
-    if (!section.classList.contains('level1')) {
-      var nested = clone.querySelectorAll('section[class*="level"]');
-      for (var i = 0; i < nested.length; i++) nested[i].remove();
+    // Walk up the DOM marking ancestor sections so nested slides are reachable
+    var parent = section.parentElement;
+    while (parent && parent !== contentRoot) {
+      if (parent.matches('section[class*="level"]')) {
+        parent.classList.add('pres-ancestor');
+      }
+      parent = parent.parentElement;
     }
-
-    ov.innerHTML = "";
-    ov.appendChild(clone);
 
     counter.textContent = (idx + 1) + " / " + slides.length;
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -234,7 +249,7 @@ document.addEventListener("DOMContentLoaded", function () {
       currentIdx = 0;
       showSlide(0);
     } else {
-      if (overlay) overlay.innerHTML = "";
+      clearPresClasses();
     }
   }
 
