@@ -210,12 +210,14 @@ document.addEventListener("DOMContentLoaded", function () {
     var ov      = getOverlay();
     var section = slides[idx];
 
-    // Clone section and strip nested subsections so only direct content shows
+    // Clone section; for level1, keep subsections — for deeper levels, strip them
     var clone = section.cloneNode(true);
     // Clear any inline display style Quarto may have set on the original section
     clone.style.removeProperty('display');
-    var nested = clone.querySelectorAll('section[class*="level"]');
-    for (var i = 0; i < nested.length; i++) nested[i].remove();
+    if (!section.classList.contains('level1')) {
+      var nested = clone.querySelectorAll('section[class*="level"]');
+      for (var i = 0; i < nested.length; i++) nested[i].remove();
+    }
 
     ov.innerHTML = "";
     ov.appendChild(clone);
