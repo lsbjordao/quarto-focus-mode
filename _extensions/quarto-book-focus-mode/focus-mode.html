@@ -277,6 +277,8 @@ document.addEventListener("DOMContentLoaded", function () {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
+  var presStorageKey = "quarto-book-presentation-mode";
+
   function setPresentationMode(enabled) {
     if (enabled && total === 0) return;
     presActive = enabled;
@@ -286,7 +288,12 @@ document.addEventListener("DOMContentLoaded", function () {
     } else {
       clearPresClasses();
     }
+    try { localStorage.setItem(presStorageKey, enabled ? "1" : "0"); } catch (e) {}
   }
+
+  try {
+    if (localStorage.getItem(presStorageKey) === "1") setPresentationMode(true);
+  } catch (e) {}
 
   document.addEventListener("keydown", function (e) {
     var tag = document.activeElement ? document.activeElement.tagName : "";
