@@ -262,10 +262,24 @@ document.addEventListener("DOMContentLoaded", function () {
   var total = slides.length + (hasPrelude ? 1 : 0);
   var progressBar = document.getElementById("book-pres-progress");
 
-  function updateProgress(position) {
-    if (progressBar && total > 0) {
-      progressBar.style.width = (position / total * 100) + "%";
+  // Compute this chapter's position within the full book via the sidebar links
+  var chapterIdx = 0, totalChapters = 1;
+  (function () {
+    var links  = document.querySelectorAll("#quarto-sidebar a[href]");
+    var active = document.querySelector("#quarto-sidebar a.active, #quarto-sidebar a[aria-current]");
+    if (active && links.length > 0) {
+      for (var i = 0; i < links.length; i++) {
+        if (links[i] === active) { chapterIdx = i; break; }
+      }
+      totalChapters = links.length;
     }
+  })();
+
+  function updateProgress(position) {
+    if (!progressBar || total === 0) return;
+    // Each chapter occupies an equal slice; fill that slice proportionally
+    var globalPct = (chapterIdx / totalChapters) + (position / total / totalChapters);
+    progressBar.style.width = (globalPct * 100) + "%";
   }
 
   function clearPresClasses() {
