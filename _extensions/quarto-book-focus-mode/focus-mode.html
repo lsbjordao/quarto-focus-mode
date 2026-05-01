@@ -273,11 +273,10 @@ document.addEventListener("DOMContentLoaded", function () {
     if (e.key === "d" || e.key === "D" || e.key === "l" || e.key === "L") {
       e.preventDefault();
       var wantDark = (e.key === "d" || e.key === "D");
-      var isDark = document.documentElement.getAttribute("data-bs-theme") === "dark";
-      if (wantDark !== isDark) {
-        var toggle = document.querySelector(".quarto-color-scheme-toggle");
-        if (toggle) toggle.click();
-      }
+      var schemeToggle = document.querySelector(".quarto-color-scheme-toggle");
+      if (!schemeToggle) return;
+      var isDark = schemeToggle.getAttribute("aria-pressed") === "true";
+      if (wantDark !== isDark) schemeToggle.click();
       return;
     }
 
