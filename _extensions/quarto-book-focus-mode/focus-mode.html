@@ -263,22 +263,49 @@ document.addEventListener("DOMContentLoaded", function () {
   var progressBar = document.getElementById("book-pres-progress");
 
   // Compute this chapter's position within the full book via the sidebar links
-  // while ignoring index.qmd in progress calculations.
-  var chapterIdx = 0, totalChapters = 1;
+  // while ignoring index/opening pages in progress calculations.
   var chapterProgressIdx = -1, totalProgressChapters = 0;
+
+  function normalizePath(path) {
+    if (!path) return "/";
+    path = String(path).trim().toLowerCase();
+    if (path === "") return "/";
+    if (path !== "/") path = path.replace(/\/+$/, "");
+    return path || "/";
+  }
+
+  function pathFromHref(href) {
+    try {
+      return normalizePath(new URL(href, window.location.href).pathname || "/");
+    } catch (e) {
+      return normalizePath((href || "").split("#")[0].split("?")[0]);
+    }
+  }
+
+  function isIndexPath(path) {
+    path = normalizePath(path);
+    return path === "/" ||
+      path === "/index" ||
+      path === "/index.html" ||
+      path === "/index.qmd" ||
+      path.endsWith("/index") ||
+      path.endsWith("/index.html") ||
+      path.endsWith("/index.qmd");
+  }
+
+  var currentPath = normalizePath(window.location.pathname || "/");
+  var currentIsIndex = isIndexPath(currentPath);
+
   (function () {
     var links  = document.querySelectorAll("#quarto-sidebar a[href]");
     var active = document.querySelector("#quarto-sidebar a.active, #quarto-sidebar a[aria-current]");
     if (links.length > 0) {
-      totalChapters = links.length;
-
       // Build chapter list excluding index pages from progress.
       var progressLinks = [];
       for (var i = 0; i < links.length; i++) {
         var href = links[i].getAttribute("href") || "";
-        var cleanHref = href.split("#")[0].split("?")[0].toLowerCase();
-        if (cleanHref.endsWith("/index.html") || cleanHref.endsWith("index.html") ||
-            cleanHref.endsWith("/index.qmd") || cleanHref.endsWith("index.qmd")) {
+        var linkPath = pathFromHref(href);
+        if (isIndexPath(linkPath)) {
           continue;
         }
         progressLinks.push(links[i]);
@@ -287,12 +314,25 @@ document.addEventListener("DOMContentLoaded", function () {
       totalProgressChapters = progressLinks.length;
 
       if (active) {
-        for (var j = 0; j < links.length; j++) {
-          if (links[j] === active) { chapterIdx = j; break; }
-        }
         for (var k = 0; k < progressLinks.length; k++) {
           if (progressLinks[k] === active) { chapterProgressIdx = k; break; }
         }
+      }
+
+      // Fallback when sidebar active class is unavailable.
+      if (chapterProgressIdx < 0) {
+        for (var m = 0; m < progressLinks.length; m++) {
+          var pHref = progressLinks[m].getAttribute("href") || "";
+          if (pathFromHref(pHref) === currentPath) {
+            chapterProgressIdx = m;
+            break;
+          }
+        }
+      }
+
+      // Opening chapter must always start with zero progress.
+      if (currentIsIndex) {
+        chapterProgressIdx = -1;
       }
     }
   })();
@@ -301,7 +341,7 @@ document.addEventListener("DOMContentLoaded", function () {
     if (!progressBar || total === 0) return;
     // Index pages are excluded from progress. If current page is excluded,
     // keep bar at 0 and start filling only from subsequent chapters.
-    if (chapterProgressIdx < 0 || totalProgressChapters === 0) {
+    if (currentIsIndex || chapterProgressIdx < 0 || totalProgressChapters === 0) {
       progressBar.style.width = "0%";
       return;
     }
