@@ -141,10 +141,6 @@ body.book-presentation-mode #book-pres-indicator {
   display: inline-flex;
 }
 
-#book-pres-icon {
-  font-size: 0.6rem;
-  opacity: 0.7;
-}
 </style>
 
 <button id="book-focus-toggle" aria-label="Focus Mode" type="button">
@@ -153,7 +149,6 @@ body.book-presentation-mode #book-pres-indicator {
 </button>
 
 <div id="book-pres-indicator" aria-live="polite">
-  <span id="book-pres-icon">▶</span>
   <span id="book-pres-counter"></span>
 </div>
 
@@ -215,6 +210,21 @@ document.addEventListener("DOMContentLoaded", function () {
   var currentIdx = 0;
   var presActive  = false;
 
+  /* ── Color scheme tracking ── */
+  var schemeToggle = document.querySelector(".quarto-color-scheme-toggle");
+  var colorIsDark  = false;
+  if (schemeToggle) {
+    if (schemeToggle.getAttribute("aria-pressed") === "true") {
+      colorIsDark = true;
+    } else {
+      try {
+        var stored = localStorage.getItem("quarto-color-scheme");
+        colorIsDark = !!stored && stored !== "default";
+      } catch (e) {}
+    }
+    schemeToggle.addEventListener("click", function () { colorIsDark = !colorIsDark; });
+  }
+
   function clearPresClasses() {
     for (var i = 0; i < slides.length; i++) {
       slides[i].classList.remove('pres-current', 'pres-ancestor');
@@ -272,11 +282,9 @@ document.addEventListener("DOMContentLoaded", function () {
 
     if (e.key === "d" || e.key === "D" || e.key === "l" || e.key === "L") {
       e.preventDefault();
-      var wantDark = (e.key === "d" || e.key === "D");
-      var schemeToggle = document.querySelector(".quarto-color-scheme-toggle");
       if (!schemeToggle) return;
-      var isDark = schemeToggle.getAttribute("aria-pressed") === "true";
-      if (wantDark !== isDark) schemeToggle.click();
+      var wantDark = (e.key === "d" || e.key === "D");
+      if (wantDark !== colorIsDark) schemeToggle.click();
       return;
     }
 
