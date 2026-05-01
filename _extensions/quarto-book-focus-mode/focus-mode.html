@@ -270,6 +270,17 @@ document.addEventListener("DOMContentLoaded", function () {
       return;
     }
 
+    if (e.key === "d" || e.key === "D" || e.key === "l" || e.key === "L") {
+      e.preventDefault();
+      var wantDark = (e.key === "d" || e.key === "D");
+      var isDark = document.documentElement.getAttribute("data-bs-theme") === "dark";
+      if (wantDark !== isDark) {
+        var toggle = document.querySelector(".quarto-color-scheme-toggle");
+        if (toggle) toggle.click();
+      }
+      return;
+    }
+
     if (e.key === "p" || e.key === "P") {
       e.preventDefault();
       setPresentationMode(!presActive);
