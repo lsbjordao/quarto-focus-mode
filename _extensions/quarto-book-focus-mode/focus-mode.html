@@ -1,5 +1,6 @@
 <!-- Quarto Book Focus Mode -->
 <style>
+/* ── Focus Mode button ── */
 #book-focus-toggle {
   position: fixed;
   left: 1rem;
@@ -25,13 +26,9 @@
 
   font-size: 0.95rem;
   box-shadow: 0 2px 12px rgba(0,0,0,.18);
-
   padding: 0;
 
-  transition:
-    padding .22s ease,
-    transform .15s ease,
-    box-shadow .2s ease;
+  transition: padding .22s ease, transform .15s ease, box-shadow .2s ease;
 }
 
 #book-focus-toggle:hover {
@@ -44,11 +41,9 @@
 #book-focus-icon {
   width: 44px;
   height: 44px;
-
   display: inline-flex;
   align-items: center;
   justify-content: center;
-
   font-size: 1.25rem;
   flex-shrink: 0;
 }
@@ -63,14 +58,13 @@
   opacity: 1;
 }
 
-/* Focus mode: hide Quarto book navigation and margin TOC */
+/* ── Focus mode: hide Quarto book navigation ── */
 body.book-focus-mode #quarto-sidebar,
 body.book-focus-mode #quarto-margin-sidebar,
 body.book-focus-mode nav#TOC {
   display: none !important;
 }
 
-/* Recenter the main content */
 body.book-focus-mode #quarto-content {
   display: block !important;
 }
@@ -86,6 +80,43 @@ body.book-focus-mode main.content {
   line-height: 1.65;
   font-size: 1.03rem;
 }
+
+/* ── Presentation mode: hide all content except the overlay ── */
+body.book-presentation-mode #quarto-document-content > *:not(#pres-slide-overlay) {
+  display: none !important;
+}
+
+/* ── Presentation indicator (bottom-right, visible only when active) ── */
+#book-pres-indicator {
+  position: fixed;
+  bottom: 1.2rem;
+  right: 1.2rem;
+  z-index: 9999;
+
+  display: none;
+  align-items: center;
+  gap: 0.35rem;
+
+  font-size: 0.72rem;
+  font-family: monospace;
+  color: var(--bs-body-color);
+  opacity: 0.45;
+  -webkit-user-select: none;
+  user-select: none;
+  pointer-events: none;
+}
+
+body.book-presentation-mode #book-pres-indicator {
+  display: inline-flex;
+}
+
+#book-pres-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
+}
 </style>
 
 <button id="book-focus-toggle" aria-label="Focus Mode" type="button">
@@ -93,52 +124,128 @@ body.book-focus-mode main.content {
   <span id="book-focus-label">Focus Mode</span>
 </button>
 
+<div id="book-pres-indicator" aria-live="polite">
+  <span id="book-pres-dot"></span>
+  <span id="book-pres-counter"></span>
+</div>
+
 <script>
 document.addEventListener("DOMContentLoaded", function () {
-  const button = document.getElementById("book-focus-toggle");
-  const icon = document.getElementById("book-focus-icon");
-  const label = document.getElementById("book-focus-label");
 
-  // Only show on pages with Quarto book/sidebar structure
-  const hasBookSidebar = document.querySelector("#quarto-sidebar") !== null;
-  if (!hasBookSidebar && button) {
-    button.style.display = "none";
+  /* ── Focus Mode ── */
+  var button = document.getElementById("book-focus-toggle");
+  var icon   = document.getElementById("book-focus-icon");
+  var label  = document.getElementById("book-focus-label");
+
+  var hasBookSidebar = document.querySelector("#quarto-sidebar") !== null;
+  if (!hasBookSidebar) {
+    if (button) button.style.display = "none";
     return;
   }
 
-  const storageKey = "quarto-book-focus-mode";
+  var storageKey = "quarto-book-focus-mode";
 
   function setFocusMode(enabled) {
     document.body.classList.toggle("book-focus-mode", enabled);
-
     if (enabled) {
-      icon.textContent = "☰";
+      icon.textContent  = "☰";
       label.textContent = "TOC";
       button.setAttribute("aria-label", "Show TOC");
     } else {
-      icon.textContent = "⛶";
+      icon.textContent  = "⛶";
       label.textContent = "Focus Mode";
       button.setAttribute("aria-label", "Focus Mode");
     }
-
-    try {
-      window.localStorage.setItem(storageKey, enabled ? "1" : "0");
-    } catch (e) {
-      // Ignore storage errors
-    }
+    try { window.localStorage.setItem(storageKey, enabled ? "1" : "0"); } catch (e) {}
   }
 
-  let saved = "0";
-  try {
-    saved = window.localStorage.getItem(storageKey) || "0";
-  } catch (e) {
-    saved = "0";
-  }
-
+  var saved = "0";
+  try { saved = window.localStorage.getItem(storageKey) || "0"; } catch (e) {}
   setFocusMode(saved === "1");
 
   button.addEventListener("click", function () {
     setFocusMode(!document.body.classList.contains("book-focus-mode"));
   });
+
+  /* ── Presentation Mode ── */
+  var counter     = document.getElementById("book-pres-counter");
+  var contentRoot = document.getElementById("quarto-document-content");
+  if (!contentRoot) return;
+
+  // Collect all sections in document (DFS) order
+  var slides = [];
+  (function collect(el) {
+    for (var i = 0; i < el.children.length; i++) {
+      var child = el.children[i];
+      if (child.matches('section[class*="level"]')) {
+        slides.push(child);
+        collect(child);
+      }
+    }
+  })(contentRoot);
+
+  var currentIdx = 0;
+  var presActive  = false;
+  var overlay     = null;
+
+  function getOverlay() {
+    if (!overlay) {
+      overlay = document.createElement("div");
+      overlay.id = "pres-slide-overlay";
+      contentRoot.appendChild(overlay);
+    }
+    return overlay;
+  }
+
+  function showSlide(idx) {
+    var ov      = getOverlay();
+    var section = slides[idx];
+
+    // Clone section and strip nested subsections so only direct content shows
+    var clone = section.cloneNode(true);
+    var nested = clone.querySelectorAll('section[class*="level"]');
+    for (var i = 0; i < nested.length; i++) nested[i].remove();
+
+    ov.innerHTML = "";
+    ov.appendChild(clone);
+
+    counter.textContent = (idx + 1) + " / " + slides.length;
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function setPresentationMode(enabled) {
+    if (enabled && slides.length === 0) return;
+    presActive = enabled;
+    document.body.classList.toggle("book-presentation-mode", enabled);
+    if (enabled) {
+      currentIdx = 0;
+      showSlide(0);
+    } else {
+      if (overlay) overlay.innerHTML = "";
+    }
+  }
+
+  document.addEventListener("keydown", function (e) {
+    var tag = document.activeElement ? document.activeElement.tagName : "";
+    if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" ||
+        (document.activeElement && document.activeElement.isContentEditable)) return;
+
+    if (e.key === "p" || e.key === "P") {
+      e.preventDefault();
+      setPresentationMode(!presActive);
+      return;
+    }
+
+    if (!presActive || slides.length === 0) return;
+
+    if (e.key === "ArrowRight" || e.key === "ArrowDown") {
+      e.preventDefault();
+      if (currentIdx < slides.length - 1) showSlide(++currentIdx);
+    } else if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
+      e.preventDefault();
+      if (currentIdx > 0) showSlide(--currentIdx);
+    }
+  });
+
 });
 </script>
