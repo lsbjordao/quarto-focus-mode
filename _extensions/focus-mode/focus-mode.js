@@ -108,20 +108,143 @@ document.addEventListener("DOMContentLoaded", function () {
 
   var total = slides.length + (hasPrelude ? 1 : 0);
 
-  // Prelude is 0%; each section/subsection advances by one equal step.
-  // This guarantees the last slide reaches 100%.
+  var globalTotalSteps = slides.length;
+  var globalOffsetSteps = 0;
+  var globalProgressReady = false;
+
+  function normalizePath(path) {
+    if (!path) return "/";
+    path = String(path).trim().toLowerCase();
+    if (path === "") return "/";
+    if (path !== "/") path = path.replace(/\/+$/, "");
+    return path || "/";
+  }
+
+  function pathFromHref(href) {
+    try {
+      return normalizePath(new URL(href, window.location.href).pathname || "/");
+    } catch (e) {
+      return normalizePath((href || "").split("#")[0].split("?")[0]);
+    }
+  }
+
+  function isIndexPath(path) {
+    path = String(path || "").trim().toLowerCase();
+    if (path === "/" || path.endsWith("/")) return true;
+    path = normalizePath(path);
+    return path === "/index" ||
+      path === "/index.html" ||
+      path === "/index.qmd" ||
+      path.endsWith("/index") ||
+      path.endsWith("/index.html") ||
+      path.endsWith("/index.qmd");
+  }
+
+  var currentPath = normalizePath(window.location.pathname || "/");
+
+  function getLocalProgressPosition() {
+    if (slides.length <= 0) return 0;
+    if (hasPrelude && currentIdx === -1) return 0;
+    if (currentIdx < 0) return 0;
+    return currentIdx + 1;
+  }
+
+  // Prelude is 0%; each section/subsection advances by one equal step globally.
   function updateProgress(position) {
     if (!progressBar) return;
 
-    var steps = slides.length;
-    if (steps <= 0) {
+    var localSteps = slides.length;
+    if (localSteps <= 0) {
       progressBar.style.width = "0%";
       return;
     }
 
-    var clamped = Math.max(0, Math.min(position, steps));
-    progressBar.style.width = ((clamped / steps) * 100) + "%";
+    var localPos = Math.max(0, Math.min(position, localSteps));
+    var absolutePos = localPos;
+    var totalSteps = localSteps;
+
+    if (globalProgressReady && globalTotalSteps > 0) {
+      absolutePos = Math.max(0, Math.min(globalOffsetSteps + localPos, globalTotalSteps));
+      totalSteps = globalTotalSteps;
+    }
+
+    progressBar.style.width = ((absolutePos / totalSteps) * 100) + "%";
   }
+
+  function refreshProgressFromState() {
+    updateProgress(getLocalProgressPosition());
+  }
+
+  (function computeGlobalProgressSteps() {
+    if (!window.fetch || !window.DOMParser) return;
+
+    var links = document.querySelectorAll("#quarto-sidebar a[href]");
+    if (!links || links.length === 0) return;
+
+    var pagePaths = [];
+    var seen = {};
+    for (var i = 0; i < links.length; i++) {
+      var path = pathFromHref(links[i].getAttribute("href") || "");
+      if (!path || isIndexPath(path)) continue;
+      if (seen[path]) continue;
+      seen[path] = true;
+      pagePaths.push(path);
+    }
+    if (pagePaths.length === 0) return;
+
+    var currentPageIdx = -1;
+    for (var j = 0; j < pagePaths.length; j++) {
+      if (pagePaths[j] === currentPath) {
+        currentPageIdx = j;
+        break;
+      }
+    }
+    if (currentPageIdx < 0) return;
+
+    Promise.all(pagePaths.map(function (path) {
+      if (path === currentPath) {
+        return Promise.resolve({ path: path, count: slides.length });
+      }
+
+      var url = new URL(path, window.location.href).toString();
+      return fetch(url, { credentials: "same-origin" })
+        .then(function (response) {
+          if (!response.ok) throw new Error("fetch_failed");
+          return response.text();
+        })
+        .then(function (html) {
+          var doc = new DOMParser().parseFromString(html, "text/html");
+          var root = doc.getElementById("quarto-document-content");
+          var count = root ? root.querySelectorAll('section[class*="level"]').length : 0;
+          return { path: path, count: count };
+        })
+        .catch(function () {
+          return { path: path, count: 0 };
+        });
+    }))
+      .then(function (results) {
+        var countsByPath = {};
+        for (var r = 0; r < results.length; r++) {
+          countsByPath[results[r].path] = Math.max(0, results[r].count || 0);
+        }
+
+        var totalSteps = 0;
+        var offsetSteps = 0;
+        for (var p = 0; p < pagePaths.length; p++) {
+          var count = countsByPath[pagePaths[p]] || 0;
+          if (p < currentPageIdx) offsetSteps += count;
+          totalSteps += count;
+        }
+
+        if (totalSteps <= 0) return;
+
+        globalTotalSteps = totalSteps;
+        globalOffsetSteps = offsetSteps;
+        globalProgressReady = true;
+        refreshProgressFromState();
+      })
+      .catch(function () {});
+  })();
 
   function clearPresClasses() {
     document.body.classList.remove('pres-prelude');
