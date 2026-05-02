@@ -1,3 +1,14 @@
+(function () {
+  // Apply persisted focus state as early as possible to prevent layout flash.
+  try {
+    if (!window.matchMedia("(hover: hover) and (pointer: fine)").matches) return;
+    if (window.localStorage.getItem("quarto-focus-mode") !== "1") return;
+    if (!document.querySelector("#quarto-sidebar")) return;
+    document.documentElement.classList.add("focus-mode-persisted");
+    if (document.body) document.body.classList.add("focus-mode");
+  } catch (e) {}
+})();
+
 document.addEventListener("DOMContentLoaded", function () {
 
   /* ── Create DOM elements ── */
@@ -34,6 +45,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
   /* ── Desktop-only guard ── */
   if (!window.matchMedia("(hover: hover) and (pointer: fine)").matches) {
+    document.documentElement.classList.remove("focus-mode-persisted");
+    document.body.classList.remove("focus-mode");
     button.style.display = "none";
     return;
   }
@@ -41,6 +54,8 @@ document.addEventListener("DOMContentLoaded", function () {
   /* ── Sidebar detection (Quarto outputs with sidebar) ── */
   var hasSidebar = document.querySelector("#quarto-sidebar") !== null;
   if (!hasSidebar) {
+    document.documentElement.classList.remove("focus-mode-persisted");
+    document.body.classList.remove("focus-mode");
     button.style.display = "none";
     return;
   }
@@ -50,6 +65,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
   function setFocusMode(enabled) {
     document.body.classList.toggle("focus-mode", enabled);
+    document.documentElement.classList.toggle("focus-mode-persisted", enabled);
     if (enabled) {
       icon.textContent  = "☰";
       label.textContent = "TOC";

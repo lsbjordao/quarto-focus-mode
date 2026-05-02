@@ -60,15 +60,21 @@
 body.focus-mode #quarto-sidebar,
 body.focus-mode #quarto-margin-sidebar,
 body.focus-mode nav#TOC,
-body.focus-mode #quarto-header {
+body.focus-mode #quarto-header,
+html.focus-mode-persisted #quarto-sidebar,
+html.focus-mode-persisted #quarto-margin-sidebar,
+html.focus-mode-persisted nav#TOC,
+html.focus-mode-persisted #quarto-header {
   display: none !important;
 }
 
-body.focus-mode #quarto-content {
+body.focus-mode #quarto-content,
+html.focus-mode-persisted #quarto-content {
   display: block !important;
 }
 
-body.focus-mode main.content {
+body.focus-mode main.content,
+html.focus-mode-persisted main.content {
   max-width: var(--focus-content-width, 920px);
   margin-left: auto !important;
   margin-right: auto !important;
