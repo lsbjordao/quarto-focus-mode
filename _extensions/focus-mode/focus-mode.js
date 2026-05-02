@@ -222,51 +222,56 @@ document.addEventListener("DOMContentLoaded", function () {
     if (localStorage.getItem(presStorageKey) === "1") setPresentationMode(true);
   } catch (e) {}
 
-  function jumpToHash() {
-    if (!presActive || !window.location.hash) return;
-    var targetId = window.location.hash.slice(1);
-    var targetEl = document.getElementById(targetId);
-    if (!targetEl) return;
-    var targetIdx = -1;
+  function findSlideForElement(el) {
+    if (!el) return -1;
     for (var si = 0; si < slides.length; si++) {
-      if (slides[si] === targetEl) { targetIdx = si; break; }
+      if (slides[si] === el) return si;
     }
-    if (targetIdx < 0) {
-      for (var si = slides.length - 1; si >= 0; si--) {
-        if (slides[si].contains(targetEl)) { targetIdx = si; break; }
-      }
+    for (var si = slides.length - 1; si >= 0; si--) {
+      if (slides[si].contains(el)) return si;
     }
-    if (targetIdx >= 0) showSlide(targetIdx);
+    return -1;
   }
 
-  // On page load with hash (cross-page link)
+  function jumpToHash() {
+    if (!presActive || !window.location.hash) return;
+    var idx = findSlideForElement(document.getElementById(window.location.hash.slice(1)));
+    if (idx >= 0) showSlide(idx);
+  }
+
+  // On page load with hash (cross-page navigation)
   jumpToHash();
 
-  // On same-page anchor click — handles repeated clicks on the same hash too
+  // On anchor click — handles "#id", "page.html#id", and repeated clicks on same hash
   document.addEventListener("click", function (e) {
     if (!presActive) return;
     var anchor = e.target.closest("a[href]");
     if (!anchor) return;
     var href = anchor.getAttribute("href") || "";
-    if (!href.startsWith("#")) return;
-    var targetId = href.slice(1);
-    var targetEl = document.getElementById(targetId);
-    if (!targetEl) return;
-    var targetIdx = -1;
-    for (var si = 0; si < slides.length; si++) {
-      if (slides[si] === targetEl) { targetIdx = si; break; }
+    var hashIdx = href.indexOf("#");
+    if (hashIdx < 0) return;
+
+    // Skip links pointing to a different page
+    var pagePart = href.slice(0, hashIdx);
+    if (pagePart) {
+      try {
+        var linkUrl = new URL(href, window.location.href);
+        if (linkUrl.pathname !== window.location.pathname) return;
+      } catch (ex) { return; }
     }
-    if (targetIdx < 0) {
-      for (var si = slides.length - 1; si >= 0; si--) {
-        if (slides[si].contains(targetEl)) { targetIdx = si; break; }
-      }
-    }
-    if (targetIdx >= 0) {
+
+    var targetId = href.slice(hashIdx + 1);
+    if (!targetId) return;
+    var idx = findSlideForElement(document.getElementById(targetId));
+    if (idx >= 0) {
       e.preventDefault();
-      history.pushState(null, "", href);
-      showSlide(targetIdx);
+      history.pushState(null, "", "#" + targetId);
+      showSlide(idx);
     }
   });
+
+  // Fallback for programmatic hash changes
+  window.addEventListener("hashchange", jumpToHash);
 
   document.addEventListener("keydown", function (e) {
     var tag = document.activeElement ? document.activeElement.tagName : "";
