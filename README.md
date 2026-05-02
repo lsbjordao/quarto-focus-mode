@@ -14,9 +14,24 @@ quarto add lsbjordao/quarto-book-focus-mode
 
 ## Usage
 
-Enable the extension by adding the filter to your `_quarto.yml`:
+Enable the extension by adding the filter to your `_quarto.yml`.
+
+**Quarto Book** (`project: type: book`):
 
 ```yaml
+format:
+  html:
+    filters:
+      - focus-mode
+```
+
+**Quarto Website** (`project: type: website`) — requires sidebar navigation:
+
+```yaml
+website:
+  sidebar:
+    contents: ...   # sidebar must be defined for the extension to activate
+
 format:
   html:
     filters:
