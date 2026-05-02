@@ -12,6 +12,8 @@ From within a Quarto project:
 quarto add lsbjordao/quarto-focus-mode
 ```
 
+![Quarto Focus Mode infographic](https://raw.githubusercontent.com/lsbjordao/lsbjordao.github.io/8ef76e7f4aae2506806c8a2d37341d0da5f36dfb/posts/Quarto-focus-mode/image2.png)
+
 ## Usage
 
 Enable the extension by adding the filter to your `_quarto.yml`.
