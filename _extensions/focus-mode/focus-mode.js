@@ -314,8 +314,34 @@ document.addEventListener("DOMContentLoaded", function () {
     var currentUrl = bookPageUrlFromHref(window.location.href);
     if (!currentUrl) return;
 
-    var seen = {};
     var currentPage = bookPageFromDocument(document, currentUrl, total);
+    var updatePos = function () {
+      updateProgress(currentIdx < 0 ? 1 : currentIdx + 1 + (hasPrelude ? 1 : 0));
+    };
+
+    if (!isBookFormat) {
+      // Website: fetch all sidebar pages in parallel to get their section counts,
+      // so PageDown/PageUp progress within a page is globally consistent.
+      var sidebarPages = buildSidebarPages();
+      if (sidebarPages.length === 0) { bookProgress.failed = true; updatePos(); return; }
+
+      var fetches = sidebarPages.map(function (page) {
+        if (page.key === currentPage.key) { page.count = total; return Promise.resolve(); }
+        var url = bookPageUrlFromHref(page.url);
+        if (!url) return Promise.resolve();
+        return fetchBookPage(url).then(function (fetched) { page.count = fetched.count; }).catch(function () {});
+      });
+
+      Promise.all(fetches).then(function () {
+        bookProgress.pages = sidebarPages;
+        finishBookProgressSetup();
+        updatePos();
+      }).catch(function () { bookProgress.failed = true; updatePos(); });
+      return;
+    }
+
+    // Book: walk the link[rel="prev/next"] chain sequentially.
+    var seen = {};
     var before = [];
     var after = [];
     seen[currentPage.key] = true;
@@ -323,52 +349,26 @@ document.addEventListener("DOMContentLoaded", function () {
     function collectPrevious(fromPage) {
       var prevUrl = linkedBookPageUrl(fromPage.doc, fromPage.url, "prev");
       if (!prevUrl) return Promise.resolve();
-
       var key = bookPageKey(prevUrl.pathname || "/");
       if (seen[key]) return Promise.resolve();
       seen[key] = true;
-
-      return fetchBookPage(prevUrl).then(function (page) {
-        before.unshift(page);
-        return collectPrevious(page);
-      });
+      return fetchBookPage(prevUrl).then(function (page) { before.unshift(page); return collectPrevious(page); });
     }
 
     function collectNext(fromPage) {
       var nextUrl = linkedBookPageUrl(fromPage.doc, fromPage.url, "next");
       if (!nextUrl) return Promise.resolve();
-
       var key = bookPageKey(nextUrl.pathname || "/");
       if (seen[key]) return Promise.resolve();
       seen[key] = true;
-
-      return fetchBookPage(nextUrl).then(function (page) {
-        after.push(page);
-        return collectNext(page);
-      });
+      return fetchBookPage(nextUrl).then(function (page) { after.push(page); return collectNext(page); });
     }
 
-    var isBookFormat = !!document.head.querySelector('link[rel="next"], link[rel="prev"]');
-
     Promise.all([collectPrevious(currentPage), collectNext(currentPage)]).then(function () {
-      var allPages = before.concat([currentPage], after);
-
-      // Website fallback: no link[rel] navigation — build page list from sidebar.
-      // Use count: 1 for every page so global progress is page-proportional and
-      // stays consistent across navigations (section counts vary per page and
-      // would cause the bar to jump backwards when moving between pages).
-      if (!isBookFormat && allPages.length === 1) {
-        var sidebarPages = buildSidebarPages();
-        if (sidebarPages.length > 1) allPages = sidebarPages;
-      }
-
-      bookProgress.pages = allPages;
+      bookProgress.pages = before.concat([currentPage], after);
       finishBookProgressSetup();
-      updateProgress(currentIdx < 0 ? 1 : currentIdx + 1 + (hasPrelude ? 1 : 0));
-    }).catch(function () {
-      bookProgress.failed = true;
-      updateProgress(currentIdx < 0 ? 1 : currentIdx + 1 + (hasPrelude ? 1 : 0));
-    });
+      updatePos();
+    }).catch(function () { bookProgress.failed = true; updatePos(); });
   }
 
   setupBookProgress();
