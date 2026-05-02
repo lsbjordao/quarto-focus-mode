@@ -69,8 +69,10 @@ document.addEventListener("DOMContentLoaded", function () {
     setFocusMode(!document.body.classList.contains("book-focus-mode"));
   });
 
-  /* ── Capture-phase intercept for 'f': runs before Quarto's search handler ── */
-  document.addEventListener("keydown", function (e) {
+  /* ── Window capture-phase intercept for 'f' ── */
+  /* window is above document in the capture chain, so this runs before      */
+  /* Quarto's search handler regardless of registration order.               */
+  window.addEventListener("keydown", function (e) {
     var tag = document.activeElement ? document.activeElement.tagName : "";
     if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" ||
         (document.activeElement && document.activeElement.isContentEditable)) return;
@@ -278,6 +280,7 @@ document.addEventListener("DOMContentLoaded", function () {
       var a = links[i];
       var href = a.getAttribute("href") || "";
       if (!href || href.charAt(0) === "#") continue;
+      if (a.hasAttribute("data-bs-toggle")) continue; // sidebar section collapse toggle, not a page
       try {
         var url = new URL(a.href);
         if (url.origin !== window.location.origin) continue;
