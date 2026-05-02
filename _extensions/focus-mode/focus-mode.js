@@ -70,19 +70,22 @@ document.addEventListener("DOMContentLoaded", function () {
     setFocusMode(!document.body.classList.contains("book-focus-mode"));
   });
 
-  /* ── Window capture-phase intercept for 'f' ── */
-  /* window is above document in the capture chain, so this runs before      */
-  /* Quarto's search handler regardless of registration order.               */
-  window.addEventListener("keydown", function (e) {
+  /* ── Block 'f' on both keydown and keyup at window capture ── */
+  /* Quarto's search shortcut listens on keyup; blocking only keydown is not  */
+  /* enough — the keyup still fires and opens search. Both events are         */
+  /* intercepted here at window capture (above document in the event path).   */
+  function onFocusKey(e) {
     var tag = document.activeElement ? document.activeElement.tagName : "";
     if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" ||
         (document.activeElement && document.activeElement.isContentEditable)) return;
     if (e.key === "f" || e.key === "F") {
       e.preventDefault();
       e.stopImmediatePropagation();
-      setFocusMode(true);
+      if (e.type === "keydown") setFocusMode(true);
     }
-  }, true);
+  }
+  window.addEventListener("keydown", onFocusKey, true);
+  window.addEventListener("keyup",   onFocusKey, true);
 
   /* ── Presentation Mode ── */
   var contentRoot = document.getElementById("quarto-document-content");
@@ -533,23 +536,13 @@ document.addEventListener("DOMContentLoaded", function () {
 
     if (e.key === "ArrowRight") {
       e.preventDefault();
-      if (isBookFormat) {
-        var nextPageButton = document.querySelector(".nav-page-next a");
-        if (nextPageButton) nextPageButton.click();
-      } else {
-        navigateSidebarPage(1);
-      }
+      navigateSidebarPage(1);
       return;
     }
 
     if (e.key === "ArrowLeft") {
       e.preventDefault();
-      if (isBookFormat) {
-        var prevPageButton = document.querySelector(".nav-page-previous a");
-        if (prevPageButton) prevPageButton.click();
-      } else {
-        navigateSidebarPage(-1);
-      }
+      navigateSidebarPage(-1);
       return;
     }
 
