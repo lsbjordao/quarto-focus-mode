@@ -111,6 +111,7 @@ document.addEventListener("DOMContentLoaded", function () {
   var globalTotalSteps = slides.length;
   var globalOffsetSteps = 0;
   var globalProgressReady = false;
+  var localToGlobalSteps = [];
 
   function normalizePath(path) {
     if (!path) return "/";
@@ -142,6 +143,20 @@ document.addEventListener("DOMContentLoaded", function () {
 
   var currentPath = normalizePath(window.location.pathname || "/");
 
+  function hashFromHref(href) {
+    try {
+      return (new URL(href, window.location.href).hash || "").replace(/^#/, "").trim().toLowerCase();
+    } catch (e) {
+      var idx = String(href || "").indexOf("#");
+      if (idx < 0) return "";
+      return String(href).slice(idx + 1).trim().toLowerCase();
+    }
+  }
+
+  function unitKey(path, hash) {
+    return normalizePath(path) + "#" + String(hash || "").trim().toLowerCase();
+  }
+
   function getLocalProgressPosition() {
     if (slides.length <= 0) return 0;
     if (hasPrelude && currentIdx === -1) return 0;
@@ -164,7 +179,13 @@ document.addEventListener("DOMContentLoaded", function () {
     var totalSteps = localSteps;
 
     if (globalProgressReady && globalTotalSteps > 0) {
-      absolutePos = Math.max(0, Math.min(globalOffsetSteps + localPos, globalTotalSteps));
+      if (localPos <= 0) {
+        absolutePos = globalOffsetSteps;
+      } else {
+        var localIdx = localPos - 1;
+        var mapped = localToGlobalSteps[localIdx] || (globalOffsetSteps + localPos);
+        absolutePos = Math.max(0, Math.min(mapped, globalTotalSteps));
+      }
       totalSteps = globalTotalSteps;
     }
 
@@ -175,75 +196,79 @@ document.addEventListener("DOMContentLoaded", function () {
     updateProgress(getLocalProgressPosition());
   }
 
-  (function computeGlobalProgressSteps() {
-    if (!window.fetch || !window.DOMParser) return;
-
+  (function computeGlobalProgressStepsFromSidebar() {
     var links = document.querySelectorAll("#quarto-sidebar a[href]");
     if (!links || links.length === 0) return;
 
-    var pagePaths = [];
+    var globalUnits = [];
     var seen = {};
     for (var i = 0; i < links.length; i++) {
-      var path = pathFromHref(links[i].getAttribute("href") || "");
+      var href = links[i].getAttribute("href") || "";
+      var path = pathFromHref(href);
       if (!path || isIndexPath(path)) continue;
-      if (seen[path]) continue;
-      seen[path] = true;
-      pagePaths.push(path);
+      var hash = hashFromHref(href);
+      var key = unitKey(path, hash);
+      if (seen[key]) continue;
+      seen[key] = true;
+      globalUnits.push({ key: key, path: path, hash: hash });
     }
-    if (pagePaths.length === 0) return;
+    if (globalUnits.length === 0) return;
 
-    var currentPageIdx = -1;
-    for (var j = 0; j < pagePaths.length; j++) {
-      if (pagePaths[j] === currentPath) {
-        currentPageIdx = j;
-        break;
-      }
+    var indexByKey = {};
+    for (var g = 0; g < globalUnits.length; g++) {
+      indexByKey[globalUnits[g].key] = g + 1;
     }
-    if (currentPageIdx < 0) return;
 
-    Promise.all(pagePaths.map(function (path) {
-      if (path === currentPath) {
-        return Promise.resolve({ path: path, count: slides.length });
+    var chapterStart = indexByKey[unitKey(currentPath, "")] || 0;
+    var mapped = new Array(slides.length);
+    for (var s = 0; s < slides.length; s++) {
+      var slide = slides[s];
+      var candidates = [];
+
+      if (s === 0) candidates.push(unitKey(currentPath, ""));
+
+      var sid = (slide.id || "").trim().toLowerCase();
+      if (sid) candidates.push(unitKey(currentPath, sid));
+
+      var heading = slide.querySelector("h1[id],h2[id],h3[id],h4[id],h5[id],h6[id]");
+      var hid = heading && heading.id ? String(heading.id).trim().toLowerCase() : "";
+      if (hid) candidates.push(unitKey(currentPath, hid));
+
+      var found = 0;
+      for (var c = 0; c < candidates.length; c++) {
+        if (indexByKey[candidates[c]]) {
+          found = indexByKey[candidates[c]];
+          break;
+        }
       }
+      mapped[s] = found;
+    }
 
-      var url = new URL(path, window.location.href).toString();
-      return fetch(url, { credentials: "same-origin" })
-        .then(function (response) {
-          if (!response.ok) throw new Error("fetch_failed");
-          return response.text();
-        })
-        .then(function (html) {
-          var doc = new DOMParser().parseFromString(html, "text/html");
-          var root = doc.getElementById("quarto-document-content");
-          var count = root ? root.querySelectorAll('section[class*="level"]').length : 0;
-          return { path: path, count: count };
-        })
-        .catch(function () {
-          return { path: path, count: 0 };
-        });
-    }))
-      .then(function (results) {
-        var countsByPath = {};
-        for (var r = 0; r < results.length; r++) {
-          countsByPath[results[r].path] = Math.max(0, results[r].count || 0);
-        }
+    var firstKnown = -1;
+    for (var mk = 0; mk < mapped.length; mk++) {
+      if (mapped[mk] > 0) { firstKnown = mk; break; }
+    }
 
-        var totalSteps = 0;
-        var offsetSteps = 0;
-        for (var p = 0; p < pagePaths.length; p++) {
-          var count = countsByPath[pagePaths[p]] || 0;
-          if (p < currentPageIdx) offsetSteps += count;
-          totalSteps += count;
-        }
+    if (firstKnown >= 0) {
+      for (var b = firstKnown - 1; b >= 0; b--) {
+        mapped[b] = Math.max(1, mapped[b + 1] - 1);
+      }
+      for (var f = firstKnown + 1; f < mapped.length; f++) {
+        if (mapped[f] <= 0) mapped[f] = Math.min(globalUnits.length, mapped[f - 1] + 1);
+      }
+    } else if (chapterStart > 0) {
+      for (var cs = 0; cs < mapped.length; cs++) {
+        mapped[cs] = Math.min(globalUnits.length, chapterStart + cs);
+      }
+    } else {
+      return;
+    }
 
-        if (totalSteps <= 0) return;
-
-        globalTotalSteps = totalSteps;
-        globalOffsetSteps = offsetSteps;
-        globalProgressReady = true;
-        refreshProgressFromState();
-      })
-      .catch(function () {});
+    globalTotalSteps = globalUnits.length;
+    localToGlobalSteps = mapped;
+    globalOffsetSteps = mapped.length > 0 ? Math.max(0, mapped[0] - 1) : Math.max(0, chapterStart - 1);
+    globalProgressReady = true;
+    refreshProgressFromState();
   })();
 
   function clearPresClasses() {
