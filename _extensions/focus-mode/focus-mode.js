@@ -157,13 +157,18 @@ document.addEventListener("DOMContentLoaded", function () {
   })();
 
   function updateProgress(position) {
-    if (!progressBar || total === 0) return;
-    if (currentIsIndex || chapterProgressIdx < 0 || totalProgressChapters === 0) {
+    if (!progressBar || total === 0 || totalProgressChapters === 0) return;
+    var effectiveTotal = Math.max(1, totalProgressChapters);
+    var globalPct;
+    if (currentIsIndex) {
+      // Prelude (position=1) stays at 0%; sections advance toward 1/N
+      globalPct = (position - 1) / total / effectiveTotal;
+    } else if (chapterProgressIdx < 0) {
       progressBar.style.width = "0%";
       return;
+    } else {
+      globalPct = (chapterProgressIdx / effectiveTotal) + (position / total / effectiveTotal);
     }
-    var effectiveTotal = Math.max(1, totalProgressChapters);
-    var globalPct = (chapterProgressIdx / effectiveTotal) + (position / total / effectiveTotal);
     progressBar.style.width = (globalPct * 100) + "%";
   }
 
