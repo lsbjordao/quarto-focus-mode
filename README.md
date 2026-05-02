@@ -20,7 +20,7 @@ Enable the extension by adding the filter to your `_quarto.yml`:
 format:
   html:
     filters:
-      - quarto-book-focus-mode
+      - focus-mode
 ```
 
 Then render your project:

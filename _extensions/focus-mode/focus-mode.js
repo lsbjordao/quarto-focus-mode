@@ -1,183 +1,3 @@
-<!-- Quarto Book Focus Mode -->
-<style>
-/* ── Focus Mode button ── */
-#book-focus-toggle {
-  position: fixed;
-  left: 1rem;
-  bottom: 1rem;
-  z-index: 9999;
-
-  height: 44px;
-  min-width: 44px;
-  width: 44px;
-
-  border-radius: 999px;
-  border: 1px solid var(--bs-border-color);
-  background: var(--bs-body-bg);
-  color: var(--bs-body-color);
-
-  display: inline-flex;
-  align-items: center;
-  justify-content: flex-start;
-
-  overflow: hidden;
-  white-space: nowrap;
-  cursor: pointer;
-
-  font-size: 0.95rem;
-  box-shadow: 0 2px 12px rgba(0,0,0,.18);
-  padding: 0;
-
-  transition: padding .22s ease, transform .15s ease, box-shadow .2s ease;
-}
-
-#book-focus-toggle:hover {
-  width: auto;
-  padding-right: .9rem;
-  box-shadow: 0 3px 14px rgba(0,0,0,.25);
-  transform: scale(1.03);
-}
-
-#book-focus-icon {
-  width: 44px;
-  height: 44px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.25rem;
-  flex-shrink: 0;
-}
-
-#book-focus-label {
-  opacity: 0;
-  margin-left: .15rem;
-  transition: opacity .18s ease;
-}
-
-#book-focus-toggle:hover #book-focus-label {
-  opacity: 1;
-}
-
-/* ── Focus mode: hide Quarto book navigation ── */
-body.book-focus-mode #quarto-sidebar,
-body.book-focus-mode #quarto-margin-sidebar,
-body.book-focus-mode nav#TOC {
-  display: none !important;
-}
-
-body.book-focus-mode #quarto-content {
-  display: block !important;
-}
-
-body.book-focus-mode main.content {
-  max-width: var(--book-focus-content-width, 920px);
-  margin-left: auto !important;
-  margin-right: auto !important;
-}
-
-/* Reading comfort */
-#quarto-document-content {
-  line-height: 1.65;
-  font-size: 1.03rem;
-}
-
-/* ── Presentation mode ── */
-
-/* Non-prelude: hide everything not on the current section path */
-body.book-presentation-mode:not(.pres-prelude) #quarto-document-content > *:not(.pres-current):not(.pres-ancestor) {
-  display: none !important;
-}
-
-/* Prelude: hide all sections, keep title/intro visible */
-body.book-presentation-mode.pres-prelude #quarto-document-content > section[class*="level"] {
-  display: none !important;
-}
-
-/* Show current section and ancestor sections */
-body.book-presentation-mode .pres-current,
-body.book-presentation-mode .pres-ancestor {
-  display: block !important;
-}
-
-/* Inside ancestor sections: hide non-section children (headings, paragraphs, etc.)
-   so only the path to the current section is visible */
-body.book-presentation-mode .pres-ancestor > :not(section) {
-  display: none !important;
-}
-
-/* Inside ancestor sections: hide sibling sections that are not on the path */
-body.book-presentation-mode .pres-ancestor > section[class*="level"]:not(.pres-current):not(.pres-ancestor) {
-  display: none !important;
-}
-
-/* For level2+ current sections: hide their nested subsections */
-body.book-presentation-mode .pres-current:not(.level1) > section[class*="level"] {
-  display: none !important;
-}
-
-/* ── Presentation progress bar (bottom, full width) ── */
-#book-pres-progress {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  height: 3px;
-  width: 0%;
-  background: var(--bs-primary, #0d6efd);
-  z-index: 10000;
-  display: none;
-  transition: width 0.35s ease;
-  pointer-events: none;
-}
-
-body.book-presentation-mode #book-pres-progress {
-  display: block;
-}
-
-/* ── Presentation indicator (bottom-right, visible only when active) ── */
-#book-pres-indicator {
-  position: fixed;
-  bottom: 1rem;
-  right: 1rem;
-  z-index: 9999;
-
-  display: none;
-  align-items: center;
-  gap: 0.3rem;
-  padding: 0 0.65rem 0 0.5rem;
-  height: 28px;
-
-  border-radius: 999px;
-  border: 1px solid var(--bs-border-color);
-  background: var(--bs-body-bg);
-  color: var(--bs-body-color);
-  box-shadow: 0 2px 8px rgba(0,0,0,.15);
-
-  font-size: 0.72rem;
-  font-family: monospace;
-  opacity: 0.75;
-  -webkit-user-select: none;
-  user-select: none;
-  pointer-events: none;
-}
-
-body.book-presentation-mode #book-pres-indicator {
-  display: inline-flex;
-}
-
-</style>
-
-<button id="book-focus-toggle" aria-label="Focus Mode" type="button">
-  <span id="book-focus-icon" aria-hidden="true">⛶</span>
-  <span id="book-focus-label">Focus Mode</span>
-</button>
-
-<div id="book-pres-progress"></div>
-
-<div id="book-pres-indicator" aria-live="polite">
-  <span id="book-pres-counter"></span>
-</div>
-
-<script>
 document.addEventListener("DOMContentLoaded", function () {
 
   /* ── Focus Mode ── */
@@ -300,7 +120,6 @@ document.addEventListener("DOMContentLoaded", function () {
     var links  = document.querySelectorAll("#quarto-sidebar a[href]");
     var active = document.querySelector("#quarto-sidebar a.active, #quarto-sidebar a[aria-current]");
     if (links.length > 0) {
-      // Build chapter list excluding index pages from progress.
       var progressLinks = [];
       for (var i = 0; i < links.length; i++) {
         var href = links[i].getAttribute("href") || "";
@@ -319,7 +138,6 @@ document.addEventListener("DOMContentLoaded", function () {
         }
       }
 
-      // Fallback when sidebar active class is unavailable.
       if (chapterProgressIdx < 0) {
         for (var m = 0; m < progressLinks.length; m++) {
           var pHref = progressLinks[m].getAttribute("href") || "";
@@ -330,7 +148,6 @@ document.addEventListener("DOMContentLoaded", function () {
         }
       }
 
-      // Opening chapter must always start with zero progress.
       if (currentIsIndex) {
         chapterProgressIdx = -1;
       }
@@ -339,8 +156,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
   function updateProgress(position) {
     if (!progressBar || total === 0) return;
-    // Index pages are excluded from progress. If current page is excluded,
-    // keep bar at 0 and start filling only from subsequent chapters.
     if (currentIsIndex || chapterProgressIdx < 0 || totalProgressChapters === 0) {
       progressBar.style.width = "0%";
       return;
@@ -470,4 +285,3 @@ document.addEventListener("DOMContentLoaded", function () {
   });
 
 });
-</script>
