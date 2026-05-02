@@ -45,7 +45,7 @@ document.addEventListener("DOMContentLoaded", function () {
   /* ── Desktop-only guard ── */
   if (!window.matchMedia("(hover: hover) and (pointer: fine)").matches) {
     document.documentElement.classList.remove("focus-mode-persisted");
-    document.documentElement.classList.remove("presentation-mode-persisted");
+    document.documentElement.classList.remove("presentation-mode-preload");
     document.body.classList.remove("focus-mode");
     button.style.display = "none";
     return;
@@ -55,7 +55,7 @@ document.addEventListener("DOMContentLoaded", function () {
   var hasSidebar = document.querySelector("#quarto-sidebar") !== null;
   if (!hasSidebar) {
     document.documentElement.classList.remove("focus-mode-persisted");
-    document.documentElement.classList.remove("presentation-mode-persisted");
+    document.documentElement.classList.remove("presentation-mode-preload");
     document.body.classList.remove("focus-mode");
     button.style.display = "none";
     return;
@@ -106,7 +106,10 @@ document.addEventListener("DOMContentLoaded", function () {
 
   /* ── Presentation Mode ── */
   var contentRoot = document.getElementById("quarto-document-content");
-  if (!contentRoot) return;
+  if (!contentRoot) {
+    document.documentElement.classList.remove("presentation-mode-preload");
+    return;
+  }
 
   // Collect all sections in document (DFS) order
   var slides = [];
@@ -499,16 +502,22 @@ document.addEventListener("DOMContentLoaded", function () {
 
   var presStorageKey = "quarto-presentation-mode";
 
+  function clearPresentationPreload() {
+    document.documentElement.classList.remove("presentation-mode-preload");
+  }
+
   function setPresentationMode(enabled) {
     if (enabled && total === 0) return;
     presActive = enabled;
     document.body.classList.toggle("presentation-mode", enabled);
-    document.documentElement.classList.toggle("presentation-mode-persisted", enabled);
     if (enabled) {
       if (hasPrelude) { showPrelude(); } else { showSlide(0); }
+      // Release visibility lock on the next frame after slide classes are set.
+      requestAnimationFrame(clearPresentationPreload);
     } else {
       clearPresClasses();
       updateTocHighlight(null);
+      clearPresentationPreload();
       // Re-trigger Quarto's scrollspy so TOC reverts to scroll-based highlight
       window.dispatchEvent(new Event("scroll"));
     }
@@ -518,6 +527,8 @@ document.addEventListener("DOMContentLoaded", function () {
   try {
     if (localStorage.getItem(presStorageKey) === "1") setPresentationMode(true);
   } catch (e) {}
+
+  if (!presActive) clearPresentationPreload();
 
   function findSlideForElement(el) {
     if (!el) return -1;

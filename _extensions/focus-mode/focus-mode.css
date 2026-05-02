@@ -81,7 +81,7 @@ html.focus-mode-persisted main.content {
 }
 
 /* Prevent initial flash of non-active sections while presentation state is restored. */
-html.presentation-mode-persisted #quarto-document-content {
+html.presentation-mode-preload #quarto-document-content {
   visibility: hidden;
 }
 
