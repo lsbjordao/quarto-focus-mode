@@ -38,9 +38,9 @@ document.addEventListener("DOMContentLoaded", function () {
     return;
   }
 
-  /* ── Focus Mode ── */
-  var hasBookSidebar = document.querySelector("#quarto-sidebar") !== null;
-  if (!hasBookSidebar) {
+  /* ── Sidebar detection (Quarto Book and Quarto Website with sidebar) ── */
+  var hasSidebar = document.querySelector("#quarto-sidebar") !== null;
+  if (!hasSidebar) {
     button.style.display = "none";
     return;
   }
@@ -68,6 +68,18 @@ document.addEventListener("DOMContentLoaded", function () {
   button.addEventListener("click", function () {
     setFocusMode(!document.body.classList.contains("book-focus-mode"));
   });
+
+  /* ── Capture-phase intercept for 'f': runs before Quarto's search handler ── */
+  document.addEventListener("keydown", function (e) {
+    var tag = document.activeElement ? document.activeElement.tagName : "";
+    if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" ||
+        (document.activeElement && document.activeElement.isContentEditable)) return;
+    if (e.key === "f" || e.key === "F") {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      setFocusMode(true);
+    }
+  }, true);
 
   /* ── Presentation Mode ── */
   var contentRoot = document.getElementById("quarto-document-content");
@@ -257,6 +269,40 @@ document.addEventListener("DOMContentLoaded", function () {
       bookProgress.currentPageIndex >= 0;
   }
 
+  /* ── Sidebar page list (fallback for quarto-website) ── */
+  function buildSidebarPages() {
+    var seen = {};
+    var pages = [];
+    var links = document.querySelectorAll("#quarto-sidebar a[href]");
+    for (var i = 0; i < links.length; i++) {
+      var a = links[i];
+      var href = a.getAttribute("href") || "";
+      if (!href || href.charAt(0) === "#") continue;
+      try {
+        var url = new URL(a.href);
+        if (url.origin !== window.location.origin) continue;
+        url.hash = "";
+        var key = bookPageKey(url.pathname);
+        if (!seen[key]) {
+          seen[key] = true;
+          pages.push({ key: key, url: url.href, count: 1, doc: null });
+        }
+      } catch (ex) {}
+    }
+    return pages;
+  }
+
+  function navigateSidebarPage(direction) {
+    var pages = buildSidebarPages();
+    for (var i = 0; i < pages.length; i++) {
+      if (pages[i].key === currentPath) {
+        var target = pages[i + direction];
+        if (target) window.location.href = target.url;
+        return;
+      }
+    }
+  }
+
   function setupBookProgress() {
     var currentUrl = bookPageUrlFromHref(window.location.href);
     if (!currentUrl) return;
@@ -295,8 +341,26 @@ document.addEventListener("DOMContentLoaded", function () {
       });
     }
 
+    var isBookFormat = !!document.head.querySelector('link[rel="next"], link[rel="prev"]');
+
     Promise.all([collectPrevious(currentPage), collectNext(currentPage)]).then(function () {
-      bookProgress.pages = before.concat([currentPage], after);
+      var allPages = before.concat([currentPage], after);
+
+      // Website fallback: no link[rel] navigation — build page list from sidebar
+      if (!isBookFormat && allPages.length === 1) {
+        var sidebarPages = buildSidebarPages();
+        if (sidebarPages.length > 1) {
+          for (var i = 0; i < sidebarPages.length; i++) {
+            if (sidebarPages[i].key === currentPage.key) {
+              sidebarPages[i].count = total;
+              break;
+            }
+          }
+          allPages = sidebarPages;
+        }
+      }
+
+      bookProgress.pages = allPages;
       finishBookProgressSetup();
       updateProgress(currentIdx < 0 ? 1 : currentIdx + 1 + (hasPrelude ? 1 : 0));
     }).catch(function () {
@@ -443,12 +507,6 @@ document.addEventListener("DOMContentLoaded", function () {
     if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" ||
         (document.activeElement && document.activeElement.isContentEditable)) return;
 
-    if (e.key === "f" || e.key === "F") {
-      e.preventDefault();
-      setFocusMode(true);
-      return;
-    }
-
     if (e.key === "t" || e.key === "T") {
       e.preventDefault();
       setFocusMode(false);
@@ -470,20 +528,16 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     if (e.key === "ArrowRight") {
+      e.preventDefault();
       var nextPageButton = document.querySelector(".nav-page-next a");
-      if (nextPageButton) {
-        e.preventDefault();
-        nextPageButton.click();
-      }
+      if (nextPageButton) { nextPageButton.click(); } else { navigateSidebarPage(1); }
       return;
     }
 
     if (e.key === "ArrowLeft") {
+      e.preventDefault();
       var prevPageButton = document.querySelector(".nav-page-previous a");
-      if (prevPageButton) {
-        e.preventDefault();
-        prevPageButton.click();
-      }
+      if (prevPageButton) { prevPageButton.click(); } else { navigateSidebarPage(-1); }
       return;
     }
 
