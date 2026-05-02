@@ -3,7 +3,6 @@
   try {
     if (!window.matchMedia("(hover: hover) and (pointer: fine)").matches) return;
     if (window.localStorage.getItem("quarto-focus-mode") !== "1") return;
-    if (!document.querySelector("#quarto-sidebar")) return;
     document.documentElement.classList.add("focus-mode-persisted");
     if (document.body) document.body.classList.add("focus-mode");
   } catch (e) {}
