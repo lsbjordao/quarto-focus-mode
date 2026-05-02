@@ -170,22 +170,24 @@ document.addEventListener("DOMContentLoaded", function () {
     }
   })();
 
-  // Each chapter gets equal weight on the progress bar, regardless of slide count
+  // Index + each chapter get equal weight; prelude always maps to 0 within its page
   function updateProgress(position) {
     if (!progressBar || total === 0 || totalProgressChapters === 0) return;
 
+    var slots = totalProgressChapters + 1; // index occupies slot 0, chapters slots 1..N
+    var slotWidth = 1 / slots;
+    var intraProgress = hasPrelude
+      ? (slides.length > 0 ? Math.max(0, (position - 1) / slides.length) : 0)
+      : position / total;
+
     var globalPct;
     if (currentIsIndex) {
-      globalPct = 0;
+      globalPct = intraProgress * slotWidth;
     } else if (chapterProgressIdx < 0) {
       progressBar.style.width = "0%";
       return;
     } else {
-      var chapterWidth = 1 / totalProgressChapters;
-      var intraChapterProgress = hasPrelude
-        ? Math.max(0, (position - 1) / slides.length)
-        : position / total;
-      globalPct = chapterProgressIdx * chapterWidth + intraChapterProgress * chapterWidth;
+      globalPct = (chapterProgressIdx + 1) * slotWidth + intraProgress * slotWidth;
     }
     progressBar.style.width = (Math.min(globalPct, 1) * 100) + "%";
   }
