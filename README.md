@@ -9,7 +9,7 @@ Compatible with **Quarto ≥ 1.4**. **Desktop only** — the extension is automa
 From within a Quarto project:
 
 ```bash
-quarto add lsbjordao/quarto-book-focus-mode
+quarto add lsbjordao/quarto-focus-mode
 ```
 
 ## Usage
