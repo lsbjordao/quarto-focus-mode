@@ -45,6 +45,7 @@ document.addEventListener("DOMContentLoaded", function () {
     return;
   }
 
+  var isBookFormat = !!document.head.querySelector('link[rel="next"], link[rel="prev"]');
   var storageKey = "quarto-book-focus-mode";
 
   function setFocusMode(enabled) {
@@ -271,16 +272,16 @@ document.addEventListener("DOMContentLoaded", function () {
       bookProgress.currentPageIndex >= 0;
   }
 
-  /* ── Sidebar page list (fallback for quarto-website) ── */
+  /* ── Sidebar page list (quarto-website navigation) ── */
   function buildSidebarPages() {
     var seen = {};
     var pages = [];
-    var links = document.querySelectorAll("#quarto-sidebar a[href]");
+    // .sidebar-item-section items are collapsible group headers, not pages — exclude them
+    var links = document.querySelectorAll("#quarto-sidebar .sidebar-item:not(.sidebar-item-section) a[href]");
     for (var i = 0; i < links.length; i++) {
       var a = links[i];
       var href = a.getAttribute("href") || "";
       if (!href || href.charAt(0) === "#") continue;
-      if (a.hasAttribute("data-bs-toggle")) continue; // sidebar section collapse toggle, not a page
       try {
         var url = new URL(a.href);
         if (url.origin !== window.location.origin) continue;
@@ -532,15 +533,23 @@ document.addEventListener("DOMContentLoaded", function () {
 
     if (e.key === "ArrowRight") {
       e.preventDefault();
-      var nextPageButton = document.querySelector(".nav-page-next a");
-      if (nextPageButton) { nextPageButton.click(); } else { navigateSidebarPage(1); }
+      if (isBookFormat) {
+        var nextPageButton = document.querySelector(".nav-page-next a");
+        if (nextPageButton) nextPageButton.click();
+      } else {
+        navigateSidebarPage(1);
+      }
       return;
     }
 
     if (e.key === "ArrowLeft") {
       e.preventDefault();
-      var prevPageButton = document.querySelector(".nav-page-previous a");
-      if (prevPageButton) { prevPageButton.click(); } else { navigateSidebarPage(-1); }
+      if (isBookFormat) {
+        var prevPageButton = document.querySelector(".nav-page-previous a");
+        if (prevPageButton) prevPageButton.click();
+      } else {
+        navigateSidebarPage(-1);
+      }
       return;
     }
 
