@@ -1,6 +1,6 @@
 # Quarto Focus Mode
 
-A lightweight Quarto extension that adds a floating **Focus Mode** toggle button to Quarto Book and Quarto Website HTML outputs, plus a keyboard-driven **Presentation Mode** for navigating one section at a time.
+A lightweight Quarto extension that adds a floating **Focus Mode** toggle button to Quarto Book and Quarto Website HTML outputs, plus a keyboard-driven **Presentation Mode** for navigating one section or subsection at a time.
 
 Compatible with **Quarto ≥ 1.4**. **Desktop only** — the extension is automatically disabled on mobile and tablet devices.
 
