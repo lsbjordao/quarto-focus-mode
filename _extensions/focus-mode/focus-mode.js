@@ -138,6 +138,20 @@ document.addEventListener("DOMContentLoaded", function () {
   /* ── Color scheme tracking ── */
   var schemeToggle = document.querySelector(".quarto-color-scheme-toggle");
 
+  function isDarkColorScheme() {
+    if (document.body && document.body.classList.contains("quarto-dark")) return true;
+    if (document.body && document.body.classList.contains("quarto-light")) return false;
+
+    var activeBootstrap = document.querySelector('link#quarto-bootstrap:not([rel="disabled-stylesheet"])');
+    if (activeBootstrap && activeBootstrap.getAttribute("data-mode") === "dark") return true;
+    if (activeBootstrap && activeBootstrap.getAttribute("data-mode") === "light") return false;
+
+    if (document.documentElement.getAttribute("data-bs-theme") === "dark") return true;
+    if (document.documentElement.getAttribute("data-bs-theme") === "light") return false;
+
+    return false;
+  }
+
   var total = slides.length + (hasPrelude ? 1 : 0);
 
   function normalizePath(path) {
@@ -584,7 +598,7 @@ document.addEventListener("DOMContentLoaded", function () {
       e.preventDefault();
       if (!schemeToggle) return;
       var wantDark = (e.key === "d" || e.key === "D");
-      var isDark = schemeToggle.getAttribute("aria-pressed") === "true";
+      var isDark = isDarkColorScheme();
       if (wantDark !== isDark) schemeToggle.click();
       return;
     }
